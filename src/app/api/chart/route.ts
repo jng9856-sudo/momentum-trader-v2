@@ -128,7 +128,7 @@ export async function GET(req: NextRequest) {
   try {
     const [res, spyRes] = await Promise.all([
       fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${p.interval}&range=${p.range}`,
-        { headers: { 'User-Agent': 'Mozilla/5.0' }, next: { revalidate: p.intraday ? 60 : 3600 } }),
+        { headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' }),
       p.intraday ? Promise.resolve(null) :
         fetch(`https://query1.finance.yahoo.com/v8/finance/chart/SPY?interval=1d&range=${p.range}`,
           { headers: { 'User-Agent': 'Mozilla/5.0' }, next: { revalidate: 3600 } }),
