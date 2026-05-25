@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Position, PositionResult } from '@/types/stock';
+import StockChart from '@/components/StockChart';
 
 // ── 레버리지 ETF 매핑 ─────────────────────────────────────────────────────────
 const LEVERAGE_MAP: Record<string, { base: string; multiplier: number; label: string }> = {
@@ -423,6 +424,15 @@ function PositionCard({ r, base, onEdit, onDelete }: {
             </div>
             <p className="text-xs text-zinc-300" style={{ fontFamily: 'system-ui' }}>{r.signalReason}</p>
           </div>
+
+          {/* 차트 — StockRay 스타일 주가 + 점수 */}
+          <StockChart
+            ticker={r.isLeverage && r.leverageBase ? r.leverageBase : r.ticker}
+            avgPrice={r.isLeverage && base?.impliedPrices?.compound
+              ? base.impliedPrices.compound  // 레버리지: 본주 추정가 기준
+              : r.avgPrice}
+            currentScore={r.score}
+          />
 
           {/* 점수 바 */}
           <div>
