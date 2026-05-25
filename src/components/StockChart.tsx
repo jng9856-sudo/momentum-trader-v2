@@ -227,19 +227,27 @@ export default function StockChart({ ticker, avgPrice, currentScore }: StockChar
         </div>
       )}
 
-      {/* 점수 바 (일별만) */}
-      {data && !data.intraday && (
-        <div className="px-3 py-1.5 border-t border-zinc-900 flex items-center gap-2">
-          <span className="text-[9px] text-zinc-600">점수</span>
-          <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-            <div className="h-full rounded-full" style={{
-              width: `${currentScore ?? (data.scores[data.scores.length-1] ?? 50)}%`,
-              background: (currentScore ?? 50) >= 60 ? '#10b981' : (currentScore ?? 50) >= 40 ? '#f59e0b' : '#ef4444'
-            }} />
+      {/* 점수 — 항상 표시 */}
+      {currentScore !== undefined && (
+        <div className="px-3 py-2 border-t border-zinc-900 flex items-center gap-3">
+          <span className="text-[9px] text-zinc-500 uppercase tracking-widest shrink-0">모멘텀 점수</span>
+          <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all"
+              style={{
+                width: `${currentScore}%`,
+                background: currentScore >= 70 ? '#10b981' : currentScore >= 45 ? '#f59e0b' : '#ef4444'
+              }} />
           </div>
-          <span className="text-[9px] font-mono font-bold" style={{ color: (currentScore??50)>=60?'#10b981':(currentScore??50)>=40?'#f59e0b':'#ef4444' }}>
-            {currentScore ?? data.scores[data.scores.length-1]}
+          <span className="text-sm font-bold font-mono shrink-0"
+            style={{ color: currentScore >= 70 ? '#10b981' : currentScore >= 45 ? '#f59e0b' : '#ef4444' }}>
+            {currentScore}
           </span>
+          <span className="text-[9px] text-zinc-600 shrink-0">/ 100</span>
+          {data?.intraday && (
+            <span className="text-[9px] text-zinc-600 shrink-0">
+              (일별 기준 · {currentScore >= 70 ? '강세' : currentScore >= 45 ? '중립' : '약세'})
+            </span>
+          )}
         </div>
       )}
     </div>
