@@ -123,7 +123,7 @@ export default function StockChart({ ticker, avgPrice, currentScore }: StockChar
         const py = (p: number) => PY + innerH - ((p - pMin) / pRange) * innerH;
         const sy = (s: number) => PY + innerH - (s / 100) * innerH;
         const pPath = prices.map((p, i) => `${i===0?'M':'L'}${px(i).toFixed(1)},${py(p).toFixed(1)}`).join(' ');
-        const sPath = !intraday && scores.length > 0 ? scores.map((s, i) => `${i===0?'M':'L'}${px(i).toFixed(1)},${sy(s).toFixed(1)}`).join(' ') : '';
+        const sPath = scores.length > 0 ? scores.map((s, i) => `${i===0?'M':'L'}${px(i).toFixed(1)},${sy(s).toFixed(1)}`).join(' ') : '';
         const aPath = `${pPath} L${px(prices.length-1).toFixed(1)},${(PY+innerH).toFixed(1)} L${PX},${(PY+innerH).toFixed(1)} Z`;
         const avgY = avgPrice ? py(avgPrice) : null;
         const avgInRange = avgY !== null && avgY >= PY && avgY <= PY + innerH;
@@ -149,20 +149,25 @@ export default function StockChart({ ticker, avgPrice, currentScore }: StockChar
               </g>
             ))}
 
-            {/* 점수 기준선 (일별만) */}
-            {!intraday && <>
-              <line x1={PX} y1={sy(60)} x2={W-PX} y2={sy(60)} stroke="#10b981" strokeWidth="0.5" strokeDasharray="3,4" opacity="0.2" />
-              <line x1={PX} y1={sy(40)} x2={W-PX} y2={sy(40)} stroke="#ef4444" strokeWidth="0.5" strokeDasharray="3,4" opacity="0.2" />
-              <text x={W-PX-2} y={sy(60)-2} fontSize="6" fill="#10b981" textAnchor="end" opacity="0.4">60</text>
-              <text x={W-PX-2} y={sy(40)-2} fontSize="6" fill="#ef4444" textAnchor="end" opacity="0.4">40</text>
-            </>}
+            {/* 점수 기준선 — 항상 표시 */}
+            <line x1={PX} y1={sy(60)} x2={W-PX} y2={sy(60)} stroke="#10b981" strokeWidth="0.5" strokeDasharray="3,4" opacity="0.2" />
+            <line x1={PX} y1={sy(40)} x2={W-PX} y2={sy(40)} stroke="#ef4444" strokeWidth="0.5" strokeDasharray="3,4" opacity="0.2" />
+            <text x={W-PX-2} y={sy(60)-2} fontSize="6" fill="#10b981" textAnchor="end" opacity="0.4">60</text>
+            <text x={W-PX-2} y={sy(40)-2} fontSize="6" fill="#ef4444" textAnchor="end" opacity="0.4">40</text>
 
             {/* 가격 */}
             <path d={aPath} fill={`url(#g-${ticker})`} />
             <path d={pPath} fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinejoin="round" />
 
-            {/* 점수선 */}
-            {sPath && <path d={sPath} fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeDasharray="4,3" opacity="0.8" />}
+            {/* 점수선 — 항상 표시, 두껍고 밝게 */}
+            {sPath && (
+              <>
+                {/* 글로우 효과 */}
+                <path d={sPath} fill="none" stroke="#ffffff" strokeWidth="3" strokeDasharray="4,3" opacity="0.1" />
+                {/* 메인 선 */}
+                <path d={sPath} fill="none" stroke="#e2e8f0" strokeWidth="1.8" strokeDasharray="4,3" opacity="0.9" />
+              </>
+            )}
 
             {/* 평단가 */}
             {avgInRange && avgY !== null && (
@@ -192,14 +197,14 @@ export default function StockChart({ ticker, avgPrice, currentScore }: StockChar
               <g>
                 <line x1={hover.x} y1={PY} x2={hover.x} y2={PY+innerH} stroke="#52525b" strokeWidth="0.8" strokeDasharray="2,2" />
                 <circle cx={hover.x} cy={py(prices[hover.idx])} r="3" fill="#10b981" stroke="#0a0a0a" strokeWidth="1.5" />
-                {!intraday && scores[hover.idx] !== undefined && <circle cx={hover.x} cy={sy(scores[hover.idx])} r="2.5" fill="#94a3b8" stroke="#0a0a0a" strokeWidth="1" />}
+                {scores[hover.idx] !== undefined && <circle cx={hover.x} cy={sy(scores[hover.idx])} r="2.5" fill="#e2e8f0" stroke="#0a0a0a" strokeWidth="1" />}
               </g>
             )}
 
             {/* 끝점 */}
             {!hover && <>
               <circle cx={px(prices.length-1)} cy={py(last)} r="2.5" fill="#10b981" stroke="#0a0a0a" strokeWidth="1.5" />
-              {!intraday && lastS !== undefined && <circle cx={px(scores.length-1)} cy={sy(lastS)} r="2" fill="#94a3b8" stroke="#0a0a0a" strokeWidth="1" />}
+              {scores.length > 0 && <circle cx={px(scores.length-1)} cy={sy(scores[scores.length-1])} r="2" fill="#e2e8f0" stroke="#0a0a0a" strokeWidth="1" />}
             </>}
 
             {/* X축 */}
