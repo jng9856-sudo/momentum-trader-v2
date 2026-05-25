@@ -322,22 +322,69 @@ async function fetchQuote(ticker: string, spyCs: number[]) {
     const { rrRatio, rrGrade, rrLabel } = calcRR(entry, stop, resistance, price);
     const trail = calcTrail(price, atrAbs, entry);
 
-    // 모멘텀 점수
+    // ── 개선된 모멘텀 점수 (0~100) ───────────────────────────────────────────
+    // 연구 기반 예측력 순서: RS > Stage > Base품질 > 수급 > 보조지표
     const macdBull = histogram > 0, macdExpanding = histogram > prevHistogram;
     const isMomentumMode = stackedBull && macdBull && macdExpanding && aboveMAs >= 4;
     let score = 0;
-    score += (vcp.score / 100) * 15;
-    if (pivot.isBroken && pivot.withinChaseLimit) score += 10; else if (vcp.isVCP && pivot.distFromPivot >= -5) score += 5;
-    if (brk52.isBreakout && brk52.breakoutDay === 0 && brk52.volConfirmed) score += 5; else if (brk52.isBreakout) score += 2;
-    if (rsLine.divergence === 'BULLISH') score += 15; else if (rsLine.rsLineTrend === 'UP') score += 8; else if (rsLine.rsLineTrend === 'DOWN') score -= 3;
-    score += aboveMAs * 2;
-    if (stackedBull) score += 5;
-    if (weekly?.trend === 'UPTREND' && weekly.isEntry) score += 5; else if (weekly?.trend === 'UPTREND') score += 2; else if (weekly?.trend === 'DOWNTREND') score -= 5;
-    if (rsi >= 50 && rsi <= 70) score += 5; else if (rsi > 78 && !isMomentumMode) score -= 2; else if (rsi > 85) score -= 4;
-    if (volRatio >= 1.5) score += 3; else if (volRatio < 0.7) score -= 2;
-    if (macdBull && macdExpanding) score += 4; else if (macdBull) score += 1; else if (!macdBull) score -= 2;
-    if (obv.trend === 'UP') score += 3; else if (obv.trend === 'DOWN') score -= 2;
-    if (pp.isPocketPivot && pp.daysAgo === 0) score += 5; else if (pp.isPocketPivot) score += 3;
+
+    // ① RS (시장 대비 상대강도) — 30점 ─────────────────────────────────────
+    // 가장 예측력 높은 팩터. 시장을 이기는 종목이 계속 이김.
+    if (rsLine.divergence === 'BULLISH')       score += 30; // SPY 약할 때 RS 강세 = 최고 신호
+    else if (rsLine.rsLineTrend === 'UP' && rsLine.rs3mChange > 20) score += 26;
+    else if (rsLine.rsLineTrend === 'UP' && rsLine.rs3mChange > 10) score += 22;
+    else if (rsLine.rsLineTrend === 'UP' && rsLine.rs3mChange > 0)  score += 16;
+    else if (rsLine.rsLineTrend === 'FLAT')    score += 8;
+    else if (rsLine.rsLineTrend === 'DOWN' && rsLine.rs3mChange > -10) score += 4;
+    else score -= 5; // RS 하락 = 시장 대비 약세
+
+    // ② Stage 분석 (Minervini 4단계) — 20점 ────────────────────────────────
+    // Stage 2: MA 정배열 + 가격이 모든 MA 위 = 상승추세 확정
+    const stage = setup.stage;
+    if (stage === 2 && stackedBull)   score += 20;
+    else if (stage === 2)             score += 14;
+    else if (stage === 1)             score += 6;  // 기반 구축 중
+    else if (stage === 3)             score -= 5;  // 천장 형성
+    else if (stage === 4)             score -= 10; // 하락추세
+
+    // ③ Base 품질 (VCP·변동성 수축) — 20점 ────────────────────────────────
+    // 좋은 베이스는 에너지 축적. 기간 길고 변동성 좁을수록 좋음.
+    if (vcp.isVCP && pivot.isBroken && pivot.withinChaseLimit) score += 20; // VCP 돌파 = 최고
+    else if (vcp.isVCP && !pivot.isBroken && pivot.distFromPivot >= -3) score += 16; // 돌파 직전
+    else if (vcp.isVCP && pivot.distFromPivot >= -7) score += 12;
+    else if (vcp.isVCP) score += 8;
+    else if (setup.setupScore >= 65) score += 10; // VCP 아니어도 좋은 베이스
+    else if (setup.setupScore >= 45) score += 5;
+    else if (setup.setupScore < 20 && stage === 4) score -= 5;
+
+    // ④ 거래량·수급 — 15점 ──────────────────────────────────────────────────
+    // OBV 상승 = 기관 매집 중. 가장 신뢰할 수 있는 수급 지표.
+    if (obv.trend === 'UP'   && volRatio >= 1.5) score += 15;
+    else if (obv.trend === 'UP')                 score += 10;
+    else if (obv.trend === 'FLAT' && volRatio >= 1.2) score += 5;
+    else if (obv.trend === 'DOWN')               score -= 8;
+    // 포켓 피벗: 기관 매집의 직접 증거
+    if (pp.isPocketPivot && pp.daysAgo === 0)    score += 5;
+    else if (pp.isPocketPivot)                    score += 3;
+    // 52주 돌파 + 거래량 확인
+    if (brk52.isBreakout && brk52.volConfirmed)  score += 5;
+    else if (brk52.isBreakout)                    score += 2;
+
+    // ⑤ 주봉 추세 — 10점 ────────────────────────────────────────────────────
+    // 주봉 우선순위 낮음. 하지만 주봉 하락추세는 강한 감점.
+    if (weekly?.isEntry)                          score += 10; // 주봉 상승 + 눌림목 = 최고타점
+    else if (weekly?.trend === 'UPTREND' && weekly.aboveAll) score += 6;
+    else if (weekly?.trend === 'UPTREND')         score += 3;
+    else if (weekly?.trend === 'DOWNTREND')       score -= 8;
+
+    // ⑥ 보조지표 (RSI·MACD) — 5점 ──────────────────────────────────────────
+    // 보조지표는 가중치 낮게. 모멘텀 종목은 RSI 70+ 당연함.
+    if (rsi >= 45 && rsi <= 75)                   score += 3;
+    else if (rsi > 75 && isMomentumMode)          score += 2; // 모멘텀 모드에선 과열 무시
+    else if (rsi > 80 && !isMomentumMode)         score -= 3;
+    if (macdBull && macdExpanding)                score += 2;
+    else if (!macdBull && !macdExpanding)         score -= 2;
+
     score = Math.max(0, Math.min(100, Math.round(score)));
 
     // 신호
