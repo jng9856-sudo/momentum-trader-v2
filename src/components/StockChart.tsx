@@ -181,7 +181,7 @@ function ChartBody({ data, signals, avgPrice, currentScore, period, setPeriod, h
   setPeriod: (p: number) => void;
   hover: { x: number; idx: number } | null;
   setHover: (h: { x: number; idx: number } | null) => void;
-  svgRef: React.RefObject<SVGSVGElement>;
+  svgRef: React.RefObject<SVGSVGElement | null>;
 }) {
   const { dates, prices, scores } = data;
   const W = 600, H = 200, PX = 8, PY = 18, PY_BOT = 28;
